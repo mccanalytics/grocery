@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grocery List — How To Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --green:      #3d6b48;
+  --green-lt:   #e8f2eb;
+  --green-mid:  #5a8c68;
+  --amber:      #fef3e2;
+  --amber-dk:   #f59e0b;
+  --text:       #1f2937;
+  --muted:      #6b7280;
+  --border:     #e5e7eb;
+  --white:      #ffffff;
+  --cream:      #fdfaf5;
+  --red:        #dc2626;
+  --red-lt:     #fef2f2;
+  --orange:     #ea580c;
+  --orange-lt:  #fff7ed;
+  --blue:       #1d4ed8;
+  --blue-lt:    #eff6ff;
+}
+
+body {
+  font-family: 'Nunito', system-ui, sans-serif;
+  background: var(--cream);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 16px;
+}
+
+.font-display { font-family: 'Playfair Display', Georgia, serif; }
+
+/* ── Layout ── */
+.page { max-width: 760px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* ── Cover ── */
+.cover {
+  background: var(--green);
+  color: white;
+  border-radius: 0 0 32px 32px;
+  padding: 48px 32px 40px;
+  margin: 0 -20px 48px;
+  position: relative;
+  overflow: hidden;
+}
+.cover::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 60%);
+}
+.cover-emoji { font-size: 3.5rem; display: block; margin-bottom: 12px; position: relative; }
+.cover h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2rem, 6vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 12px;
+  position: relative;
+}
+.cover-sub {
+  font-size: 1.05rem;
+  opacity: 0.85;
+  max-width: 500px;
+  position: relative;
+}
+.cover-version {
+  margin-top: 24px;
+  font-size: 0.75rem;
+  opacity: 0.55;
+  position: relative;
+}
+
+/* ── TOC ── */
+.toc {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 48px;
+}
+.toc h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  color: var(--green);
+  margin-bottom: 16px;
+}
+.toc ol { list-style: none; counter-reset: toc; }
+.toc li {
+  counter-increment: toc;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 0.95rem;
+}
+.toc li:last-child { border-bottom: none; }
+.toc li::before {
+  content: counter(toc);
+  font-weight: 800;
+  color: var(--green);
+  font-size: 0.8rem;
+  min-width: 20px;
+  background: var(--green-lt);
+  border-radius: 50%;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.toc a { color: var(--text); text-decoration: none; font-weight: 600; }
+.toc a:hover { color: var(--green); }
+
+/* ── Sections ── */
+.section { margin-bottom: 56px; scroll-margin-top: 20px; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--green-lt);
+}
+.section-num {
+  width: 36px; height: 36px;
+  background: var(--green);
+  color: white;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.section-icon { font-size: 1.6rem; }
+.section h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--green);
+  line-height: 1.2;
+}
+
+/* ── Steps ── */
+.steps { display: flex; flex-direction: column; gap: 14px; }
+.step {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.step-num {
+  width: 28px; height: 28px;
+  border: 2px solid var(--green);
+  color: var(--green);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step-body { flex: 1; }
+.step-body strong { color: var(--green); }
+
+/* ── Callout boxes ── */
+.callout {
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin: 18px 0;
+  font-size: 0.93rem;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.callout-icon { font-size: 1.3rem; flex-shrink: 0; line-height: 1.3; }
+.callout-body { flex: 1; }
+.callout-body strong { display: block; margin-bottom: 2px; font-size: 0.95rem; }
+
+.callout-tip    { background: var(--green-lt);  border-left: 3px solid var(--green); }
+.callout-tip .callout-body strong { color: var(--green); }
+.callout-warn   { background: #fffbeb; border-left: 3px solid var(--amber-dk); }
+.callout-warn .callout-body strong { color: #92400e; }
+.callout-info   { background: var(--blue-lt);   border-left: 3px solid var(--blue); }
+.callout-info .callout-body strong { color: var(--blue); }
+.callout-deal   { background: var(--orange-lt); border-left: 3px solid var(--orange); }
+.callout-deal .callout-body strong { color: var(--orange); }
+.callout-sale   { background: var(--red-lt);    border-left: 3px solid var(--red); }
+.callout-sale .callout-body strong { color: var(--red); }
+
+/* ── Button badges (inline UI labels) ── */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 1px 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.ui-btn.green { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.ui-btn.red   { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+.ui-btn.orange{ background: #ffedd5; border-color: #fdba74; color: #c2410c; }
+.ui-btn.blue  { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+
+/* ── Quick Reference Card ── */
+.ref-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.ref-item {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.ref-item .emoji { font-size: 1.6rem; display: block; margin-bottom: 4px; }
+.ref-item .label { font-weight: 800; font-size: 0.82rem; color: var(--green); display: block; }
+.ref-item .desc  { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+/* ── Mode pills ── */
+.mode-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 99px;
+  font-weight: 800; font-size: 0.8rem;
+  vertical-align: middle;
+}
+.mode-shop { background: #15803d; color: white; }
+.mode-edit { background: #1d4ed8; color: white; }
+
+/* ── Divider ── */
+.divider { border: none; border-top: 2px solid var(--border); margin: 48px 0; }
+
+/* ── Print ── */
+@media print {
+  .cover { border-radius: 0; margin: 0 0 32px; }
+  .section { break-inside: avoid; }
+  .toc { break-inside: avoid; }
+  body { font-size: 13pt; }
+  .cover h1 { font-size: 2rem; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 500px) {
+  .cover { padding: 36px 20px 32px; }
+  .ref-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Cover -->
+  <div class="cover">
+    <span class="cover-emoji">🛒</span>
+    <h1>Grocery List<br>How-To Guide</h1>
+    <p class="cover-sub">Everything you need to know to shop smarter — from setting up your first store to printing a clean list at home.</p>
+    <p class="cover-version">Grocery List App · All versions</p>
+  </div>
+
+  <!-- Table of Contents -->
+  <div class="toc">
+    <h2>📋 What's in this guide</h2>
+    <ol>
+      <li><a href="#s1">Opening the app</a></li>
+      <li><a href="#s2">Setting up your stores</a></li>
+      <li><a href="#s3">Setting up aisles</a></li>
+      <li><a href="#s4">Adding items to your list</a></li>
+      <li><a href="#s5">Shopping — checking off & removing items</a></li>
+      <li><a href="#s6">On Sale labels 🏷️</a></li>
+      <li><a href="#s7">Deal Counter ⭐</a></li>
+      <li><a href="#s8">Saving lists to history</a></li>
+      <li><a href="#s9">Printing or saving as PDF</a></li>
+      <li><a href="#s10">Backup &amp; restore your data</a></li>
+      <li><a href="#s11">Quick reference — every button explained</a></li>
+    </ol>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 1 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num">1</div>
+      <span class="section-icon">💻</span>
+      <h2>Opening the app</h2>
+    </div>
+
+    <p>The Grocery List app is a single <strong>HTML file</strong> — there's nothing to install, no account to create, and no internet connection required after the first time you open it.</p>
+
+    <div class="steps" style="margin-top: 16px;">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Save the file <code>grocery-list.html</code> somewhere easy to find — your Desktop, Documents folder, or Downloads folder all work great.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body"><strong>Double-click the file.</strong> It will open in your web browser (Chrome, Safari, Edge, Firefox — any of them work).</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">That's it! Your lists, stores, and settings are <strong>automatically saved</strong> right in the browser. Closing the tab or the browser and coming back later is completely fine — everything will be exactly where you left it.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-warn" style="margin-top: 20px;">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <strong>Keep the file safe</strong>
+        Your data is stored in the browser, not in the file itself. That means if you open the file in a <em>different browser</em> or on a <em>different computer</em>, you'll start fresh. Use the <strong>Backup</strong> feature (Section 10) to protect your data.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 2 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s2">
+    <div class="section-header">
+      <div class="section-num">2</div>
+      <span class="section-icon">🏪</span>
+      <h2>Setting up your stores</h2>
+    </div>
+
+    <p>The app lets you save up to <strong>5 different stores</strong>, each with its own aisle layout. This is great if you shop at more than one place — for example, your weekly grocery store and a warehouse club like Costco.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <strong>When you first open the app</strong>
+        You'll start with one store called "My Store." You can rename it and set it up to match wherever you shop most.
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Adding a new store</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Look at the row of <strong>colored pill buttons</strong> near the top of the screen — those are your store tabs. Find the <span class="ui-btn">+ Store</span> button at the end and tap it.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Pick an icon (emoji) from the grid and type your store name — for example: <em>Meijer</em>, <em>Costco</em>, <em>Aldi</em>.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Tap <span class="ui-btn green">+ Add Store</span>. The new store is created with a default set of aisles you can customize.</div>
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Renaming or deleting a store</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Switch to <span class="mode-pill mode-edit">✏️ Edit</span> mode using the toggle near the top right.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Small ✏️ and ✕ buttons will appear on the active store's tab. Tap ✏️ to rename or pick a new icon. Tap ✕ to delete the store (you'll be asked to confirm).</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">🌿</span>
+      <div class="callout-body">
+        <strong>Pro tip: match your real store layout</strong>
+        Set up aisles in the order you actually walk through the store. You'll never backtrack for a forgotten item again.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 3 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num">3</div>
+      <span class="section-icon">🗂️</span>
+      <h2>Setting up aisles</h2>
+    </div>
+
+    <p>Aisles are the <strong>sections of your list</strong> — things like "Produce," "Dairy," or "Frozen Foods." Each store has its own set of aisles. You only need to set these up once; after that you just add items.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">🔑</span>
+      <div class="callout-body">
+        <strong>You need Edit mode for this</strong>
+        Tap the <span class="mode-pill mode-edit">✏️ Edit</span> button near the top of the screen to switch into Edit mode.
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Adding a new aisle</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">In Edit mode, a bar appears at the top that says <em>"New aisle name…"</em></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Type the aisle name (e.g. <em>Produce</em>) and tap <span class="ui-btn green">+ Aisle</span> or press Enter.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">The new aisle appears at the bottom. Repeat for as many aisles as you need.</div>
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Reordering aisles</h3>
+    <p style="margin-bottom:12px;">Drag the <strong>⠿</strong> handle on any aisle to drag it to a new position. On mobile or tablet, you can also use the <strong>▲</strong> and <strong>▼</strong> buttons that appear in Edit mode to move aisles up or down one step at a time.</p>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Renaming or deleting an aisle</h3>
+    <p>In Edit mode, each aisle has ✏️ and 🗑️ buttons. Tap ✏️ to rename, 🗑️ to delete (and all its items).</p>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 4 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s4">
+    <div class="section-header">
+      <div class="section-num">4</div>
+      <span class="section-icon">✍️</span>
+      <h2>Adding items to your list</h2>
+    </div>
+
+    <p>You can add items to any aisle in <strong>both</strong> Shop and Edit mode — you don't have to switch modes just to build your list.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Open any aisle by tapping its name (if it's collapsed, tap the <strong>›</strong> chevron on the right to expand it).</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">At the bottom of each aisle, you'll see an <em>"Add item…"</em> text box and a smaller <em>"Qty"</em> box next to it.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Type the item name in the first box (e.g. <em>Apples</em>). Optionally, type a quantity in the Qty box (e.g. <em>2 lbs</em>, <em>6</em>, <em>1 bunch</em>).</div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">Tap <span class="ui-btn green">Add</span> or press <strong>Enter</strong>. The item appears in the list immediately.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <strong>Quantity matters for the Deal Counter</strong>
+        If you type <em>6</em> in the Qty box and mark the item as a deal item (⭐), it will count as 6 toward your deal — not just 1. See Section 7 for more on the Deal Counter.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 5 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s5">
+    <div class="section-header">
+      <div class="section-num">5</div>
+      <span class="section-icon">✅</span>
+      <h2>Shopping — checking off &amp; removing items</h2>
+    </div>
+
+    <p>The <span class="mode-pill mode-shop">🛒 Shop</span> mode is where you spend most of your time at the store. Everything is designed to be quick to use with one hand.</p>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Checking off an item</h3>
+    <p style="margin-bottom:8px;">Tap the <strong>circle checkbox</strong> on the left of any item. It turns green with a checkmark, the item text gets a strikethrough, and the item slides to the bottom of the aisle — out of your way. The progress bar at the top fills up as you check more items off.</p>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <strong>All done?</strong>
+        When every item is checked, the progress bar turns full green and you'll see "✅ All items checked!" — your cue to head to checkout.
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Removing an item</h3>
+    <p style="margin-bottom:12px;">Tap the <span class="ui-btn red">✕</span> button on the right side of any item to remove it from the list. You don't need to be in Edit mode to do this.</p>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Clearing all checked items at once</h3>
+    <p>Once you've checked some items, a <span class="ui-btn red">Clear checked</span> button appears next to the progress bar. Tap it to remove everything that's been checked in one go — useful when you want to reuse your aisle layout for the next trip.</p>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Collapsing aisles</h3>
+    <p>Tap the <strong>⌄</strong> chevron on any aisle header to collapse it and hide its items. Tap again (it becomes <strong>›</strong>) to expand. Great for hiding aisles you've already finished.</p>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Starting a new trip</h3>
+    <p>Tap the <span class="ui-btn">✨</span> button (top right, or the floating button on mobile). You'll get two choices:</p>
+    <ul style="margin: 12px 0 0 20px; display:flex; flex-direction:column; gap:6px;">
+      <li><strong>🔄 Keep aisles, clear all items</strong> — removes every item but keeps your aisle layout intact. Best for a regular weekly shop.</li>
+      <li><strong>📄 Start completely fresh</strong> — resets aisles and items back to the defaults for that store.</li>
+    </ul>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 6 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s6">
+    <div class="section-header">
+      <div class="section-num">6</div>
+      <span class="section-icon">🏷️</span>
+      <h2>On Sale labels</h2>
+    </div>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">⚙️</span>
+      <div class="callout-body">
+        <strong>Needs to be turned on first</strong>
+        Tap the <span class="ui-btn">⚙️</span> button → Settings → turn on <strong>🏷️ On Sale labels</strong>.
+      </div>
+    </div>
+
+    <p style="margin-top:16px;">When On Sale labels are enabled, each item on your list gets a small <span style="font-size:0.78rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:3px;padding:1px 5px;">sale?</span> button on the right side.</p>
+
+    <div class="steps" style="margin-top:16px;">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">When you spot something on sale, tap <span style="font-size:0.78rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:3px;padding:1px 5px;">sale?</span> on that item.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">It flips to a bold red <span style="font-size:0.78rem;font-weight:700;color:white;background:#dc2626;border-radius:3px;padding:1px 5px;">SALE</span> badge, and the item row gets a subtle red tint so it stands out on your list.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Tap it again to clear the sale tag.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-sale">
+      <span class="callout-icon">🏷️</span>
+      <div class="callout-body">
+        <strong>On your printout</strong>
+        Items marked as SALE show a small red "SALE" badge on the printed list too.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 7 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s7">
+    <div class="section-header">
+      <div class="section-num">7</div>
+      <span class="section-icon">⭐</span>
+      <h2>Deal Counter</h2>
+    </div>
+
+    <p>The Deal Counter tracks promotions like <strong>"5 for $5"</strong> or <strong>"Buy 10, mix and match"</strong> — where you need to grab a certain number of qualifying items to get a discount.</p>
+
+    <div class="callout callout-info">
+      <span class="callout-icon">⚙️</span>
+      <div class="callout-body">
+        <strong>Setting it up</strong>
+        Tap <span class="ui-btn">⚙️</span> → Settings → turn on <strong>⭐ Deal counter</strong>. Then set the deal name (e.g. <em>5 for $5</em>) and the number of items needed using the − and + buttons.
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Using the counter while shopping</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">When you pick up an item that qualifies for the deal, tap the <strong>⭐</strong> button on that item. It turns orange to show it's being counted.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">A bar appears at the bottom of the screen showing your progress: <em>"3 more items to complete the deal."</em></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">When you hit the target, it turns green: <em>"✅ 1 × 5 for $5 deal in cart!"</em></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">Keep going! If you want two deals (e.g. 10 items for a 5-for-$5), just keep tapping ⭐. The counter tracks multiples: <em>"✅ 2 complete + 3/5 toward another deal."</em></div>
+      </div>
+    </div>
+
+    <div class="callout callout-deal">
+      <span class="callout-icon">⭐</span>
+      <div class="callout-body">
+        <strong>Quantity counts!</strong>
+        If an item has a quantity (e.g. <em>6 cans</em>), tapping ⭐ on it adds <em>6</em> to the deal count — not just 1. So grabbing a 6-pack counts as 6 toward your deal automatically.
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <strong>Checked items don't count</strong>
+        Once you check an item off, it's no longer counted in the deal total. The counter always reflects what's still in your cart.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 8 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s8">
+    <div class="section-header">
+      <div class="section-num">8</div>
+      <span class="section-icon">💾</span>
+      <h2>Saving lists to history</h2>
+    </div>
+
+    <p>You can save a snapshot of your current list at any time. The app holds your <strong>last 10 saved lists</strong> across all stores.</p>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Saving a list</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Tap the <span class="ui-btn">💾</span> button at the top.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Give the list a name — something like <em>Weekly Shop – April 5</em> or <em>Holiday Baking</em>.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Tap <span class="ui-btn green">💾 Save</span>. The button briefly shows ✅ to confirm it worked.</div>
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Loading a saved list</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Tap the <span class="ui-btn">📋</span> button. A badge shows how many lists you have saved.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Browse your saved lists. You'll see the store name, date saved, item count, and a preview of which aisles had items.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Tap <span class="ui-btn green">Load</span> next to any list. A popup asks which store to load it into — pick the one you want.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <strong>Great for regular trips</strong>
+        Save your usual weekly list once. At the start of each week, load it back in, add anything new, and you're ready to go.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 9 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s9">
+    <div class="section-header">
+      <div class="section-num">9</div>
+      <span class="section-icon">🖨️</span>
+      <h2>Printing or saving as PDF</h2>
+    </div>
+
+    <p>Tap the <span class="ui-btn">🖨️</span> button to print your list. The app will produce a clean, formatted version with no buttons, checkboxes, or app chrome — just your list.</p>
+
+    <p style="margin-top:12px;">The printout includes:</p>
+    <ul style="margin: 10px 0 0 20px; display:flex; flex-direction:column; gap:5px;">
+      <li>Store name and icon at the top</li>
+      <li>Your list name in large, readable text</li>
+      <li>The date and time printed, plus item count</li>
+      <li>Each aisle as a labeled section with empty checkboxes to tick by hand</li>
+      <li>Quantities, and a <strong>SALE</strong> badge on any items you marked as on sale</li>
+      <li>Deal items marked with a ⭐ if the deal counter is active</li>
+    </ul>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Saving as a PDF instead of printing</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Tap <span class="ui-btn">🖨️</span>. Your browser's print dialog opens.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">In the <strong>Destination</strong> or <strong>Printer</strong> dropdown, choose <strong>Save as PDF</strong> (the exact label varies by browser).</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Click <strong>Save</strong> and choose where to put the PDF file. You can then share it, email it, or open it on your phone.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">📱</span>
+      <div class="callout-body">
+        <strong>On a phone or tablet</strong>
+        The "Save as PDF" option may appear differently. On iPhone/iPad, look for <strong>Share → Print → Pinch out to zoom → Share as PDF</strong>. On Android, choose <strong>Save as PDF</strong> in the print dialog.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 10 -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s10">
+    <div class="section-header">
+      <div class="section-num">10</div>
+      <span class="section-icon">☁️</span>
+      <h2>Backup &amp; restore your data</h2>
+    </div>
+
+    <p>Your data lives in the browser — which means it's safe as long as you use the same browser on the same computer. To protect against losing everything, use the <strong>Backup</strong> feature to save a copy of your data to a regular file.</p>
+
+    <div class="callout callout-warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        <strong>Your data may be lost if you…</strong>
+        <ul style="margin-top:4px; padding-left:16px; display:flex; flex-direction:column; gap:3px;">
+          <li>Clear your browser history or cache</li>
+          <li>Open the file in a different browser (e.g. switching from Chrome to Safari)</li>
+          <li>Open the file on a different computer</li>
+          <li>Your browser decides to clear storage for the file</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Exporting a backup</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Tap <span class="ui-btn">⚙️</span> at the top of the screen to open the settings panel.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Tap <span class="ui-btn green">Download Backup File</span>. A file named something like <code>grocery-list-backup-2025-04-05.json</code> will download.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Save it somewhere safe — a USB drive, your cloud storage (iCloud, Google Drive, Dropbox), or email it to yourself.</div>
+      </div>
+    </div>
+
+    <h3 style="font-weight:800;margin:20px 0 12px;font-size:1rem;">Restoring from a backup</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">Tap <span class="ui-btn">⚙️</span> to open settings.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">Tap <span class="ui-btn">Choose Backup File…</span> and select your saved backup file.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">Confirm the warning (this replaces all current data). Your stores, aisles, items, saved lists, and settings will all be restored.</div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <span class="callout-icon">📅</span>
+      <div class="callout-body">
+        <strong>Good habit: back up monthly</strong>
+        Once a month, export a backup and save it somewhere outside the browser. Takes 10 seconds and gives you peace of mind.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────── -->
+  <!-- SECTION 11 — Quick Ref -->
+  <!-- ─────────────────────────── -->
+  <div class="section" id="s11">
+    <div class="section-header">
+      <div class="section-num">11</div>
+      <span class="section-icon">📖</span>
+      <h2>Quick reference — every button explained</h2>
+    </div>
+
+    <div class="ref-grid">
+      <div class="ref-item">
+        <span class="emoji">🌙 / ☀️</span>
+        <span class="label">Dark / Light mode</span>
+        <span class="desc">Switches the color theme. Remembers your choice.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">📋</span>
+        <span class="label">Saved Lists</span>
+        <span class="desc">View, load, or delete your saved list history.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">💾</span>
+        <span class="label">Save List</span>
+        <span class="desc">Save a named snapshot of the current list.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">🖨️</span>
+        <span class="label">Print / PDF</span>
+        <span class="desc">Prints a clean version. Choose "Save as PDF" in the print dialog.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">⚙️</span>
+        <span class="label">Settings & Backup</span>
+        <span class="desc">Backup, restore, Sale labels, and Deal Counter settings.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">✨</span>
+        <span class="label">New List</span>
+        <span class="desc">Clear items or fully reset the current store.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">🛒 Shop</span>
+        <span class="label">Shopping mode</span>
+        <span class="desc">Check items off, mark sales, count deal items.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">✏️ Edit</span>
+        <span class="label">Edit mode</span>
+        <span class="desc">Manage stores, aisles, and their order.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">+ Store</span>
+        <span class="label">Add store</span>
+        <span class="desc">Add a new store (up to 5 total).</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">▲ ▼</span>
+        <span class="label">Reorder aisles</span>
+        <span class="desc">Move an aisle up or down. Only visible in Edit mode.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">⌄ / ›</span>
+        <span class="label">Collapse aisle</span>
+        <span class="desc">Hide or show an aisle's items.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji" style="font-size:1.1rem; background:#fee2e2; border-radius:4px; padding:4px 8px; color:#dc2626; font-weight:800;">sale?</span>
+        <span class="label" style="margin-top:6px;">On Sale tag</span>
+        <span class="desc">Mark an item as on sale. Turns bold red when active.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji">⭐</span>
+        <span class="label">Deal item</span>
+        <span class="desc">Counts this item toward your deal promotion. Turns orange when active.</span>
+      </div>
+      <div class="ref-item">
+        <span class="emoji" style="font-size:1.1rem; background:#fee2e2; border-radius:4px; padding:4px 8px; color:#dc2626; font-weight:800;">✕</span>
+        <span class="label" style="margin-top:6px;">Remove item</span>
+        <span class="desc">Deletes the item from the list. Works in any mode.</span>
+      </div>
+    </div>
+
+    <div class="callout callout-tip" style="margin-top:28px;">
+      <span class="callout-icon">🙋</span>
+      <div class="callout-body">
+        <strong>Something not working?</strong>
+        Try refreshing the browser page (press F5 or pull down on mobile). Your data is safe — it's saved automatically and a refresh won't lose anything.
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div style="text-align:center; color:var(--muted); font-size:0.85rem; padding-bottom:24px;">
+    <div style="font-family:'Playfair Display',serif; font-size:1.4rem; color:var(--green); margin-bottom:6px;">🛒 Grocery List</div>
+    Happy shopping! 🌿
+  </div>
+
+</div><!-- /page -->
+</body>
+</html>

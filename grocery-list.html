@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🛒 Grocery List</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: { fontFamily: { display: ['"Playfair Display"', 'Georgia', 'serif'] } } }
+  }
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body { font-family: 'Nunito', system-ui, sans-serif; }
+  .font-display { font-family: 'Playfair Display', Georgia, serif; }
+
+  .chk-wrap { position:relative; width:24px; height:24px; flex-shrink:0; cursor:pointer; }
+  .chk-wrap input { position:absolute; opacity:0; width:0; height:0; }
+  .chk-circle {
+    width:24px; height:24px; border-radius:50%; border:2px solid #9ca3af;
+    display:flex; align-items:center; justify-content:center;
+    transition: all 0.18s ease; background:transparent;
+  }
+  .chk-wrap input:checked + .chk-circle { background:#4a7c59; border-color:#4a7c59; }
+  .chk-wrap input:checked + .chk-circle::after {
+    content:''; display:block; width:6px; height:10px;
+    border:2px solid white; border-top:none; border-left:none;
+    transform: rotate(45deg) translate(-1px,-1px);
+  }
+  .item-row { transition: opacity 0.2s; }
+  .item-row.done .item-text { text-decoration:line-through; opacity:0.4; }
+
+  .collapse-body { overflow:hidden; transition: max-height 0.28s ease; max-height:2000px; }
+  .collapse-body.hidden-body { max-height:0 !important; }
+
+  .aisle-card.drag-over { outline:2px dashed #4a7c59; outline-offset:2px; }
+  .aisle-card.dragging { opacity:0.45; }
+
+  button { cursor:pointer; transition: all 0.15s; }
+  button:active { transform:scale(0.96); }
+
+  #store-tabs { scrollbar-width:none; -ms-overflow-style:none; }
+  #store-tabs::-webkit-scrollbar { display:none; }
+
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.55);
+    backdrop-filter:blur(3px); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  .modal-box {
+    background:#fff; border-radius:16px; width:100%; max-width:480px;
+    max-height:85vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+  .dark .modal-box { background:#1f2937; }
+
+  ::-webkit-scrollbar { width:5px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:#9ca3af; border-radius:3px; }
+  input:focus { outline:none; }
+
+  @keyframes badge-in { from{transform:scale(0.7);opacity:0} to{transform:scale(1);opacity:1} }
+  .badge { animation: badge-in 0.2s ease; }
+
+  /* Sale tag pulse on item row */
+  .item-row.on-sale { background: linear-gradient(90deg, rgba(239,68,68,0.06) 0%, transparent 100%); }
+  .dark .item-row.on-sale { background: linear-gradient(90deg, rgba(239,68,68,0.12) 0%, transparent 100%); }
+
+  /* Deal counter bar */
+  #deal-counter-bar {
+    position:fixed; bottom:0; left:0; right:0; z-index:25;
+    padding: 10px 16px 12px;
+    background: linear-gradient(to top, #fff 80%, transparent);
+    pointer-events:none;
+  }
+  .dark #deal-counter-bar { background: linear-gradient(to top, #111827 80%, transparent); }
+  #deal-counter-inner {
+    max-width:640px; margin:0 auto;
+    pointer-events:all;
+  }
+
+  @media print {
+    .no-print { display:none !important; }
+    #print-area { display:block !important; }
+    body { background:white !important; color:black !important; font-size:12pt; margin:0; padding:0; }
+
+    /* Print header */
+    .print-header { border-bottom:2pt solid #333; padding-bottom:10pt; margin-bottom:14pt; }
+    .print-store-name { font-size:11pt; color:#555; font-weight:600; margin-bottom:2pt; }
+    .print-list-title { font-size:20pt; font-weight:800; margin-bottom:3pt; line-height:1.1; }
+    .print-meta { font-size:9pt; color:#777; }
+    .print-meta span { margin-right:12pt; }
+
+    /* Aisles */
+    .print-aisle { break-inside:avoid; margin-bottom:14pt; }
+    .print-aisle-title { font-size:12pt; font-weight:700; border-bottom:1pt solid #ddd; padding-bottom:3pt; margin-bottom:6pt; color:#222; }
+
+    /* Items */
+    .print-item { display:flex; align-items:flex-start; gap:8pt; padding:3pt 2pt; font-size:11pt; border-bottom:0.5pt solid #f0f0f0; }
+    .print-item:last-child { border-bottom:none; }
+    .print-check { width:11pt; height:11pt; border:1.5pt solid #666; border-radius:2pt; flex-shrink:0; margin-top:1pt; }
+    .print-check.checked-box { background:#4a7c59; border-color:#4a7c59; }
+    .print-item-name { flex:1; }
+    .print-item-name.crossed { text-decoration:line-through; opacity:0.4; }
+    .print-item-qty { color:#666; font-style:italic; font-size:10pt; flex-shrink:0; }
+    .print-item-sale { font-size:8pt; font-weight:700; color:#dc2626; background:#fee2e2; border-radius:2pt; padding:1pt 3pt; flex-shrink:0; }
+
+    /* Footer */
+    .print-footer { margin-top:16pt; padding-top:8pt; border-top:1pt solid #ddd; font-size:8pt; color:#aaa; display:flex; justify-content:space-between; }
+  }
+  input, textarea, select { font-size:16px; }
+</style>
+</head>
+
+<body class="bg-amber-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen transition-colors duration-300">
+
+<div class="max-w-2xl mx-auto px-3 pb-24 no-print">
+
+  <!-- Header -->
+  <header id="app-header" class="no-print sticky top-0 z-30 pt-3 pb-2 bg-amber-50 dark:bg-gray-900 transition-colors duration-300">
+    <!-- Row 1: Title + icon buttons -->
+    <div class="flex items-center justify-between mb-2">
+      <h1 class="font-display text-2xl sm:text-3xl font-bold text-green-800 dark:text-green-400 select-none">🛒 Grocery List</h1>
+      <div class="flex gap-1 items-center">
+        <button id="btn-dark" title="Toggle dark/light mode"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"></button>
+        <button id="btn-history" title="Saved lists"
+          class="relative w-9 h-9 rounded-full flex items-center justify-center text-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+          📋<span id="hist-badge" class="badge hidden absolute -top-1 -right-1 bg-green-600 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center"></span>
+        </button>
+        <button id="btn-save" title="Save list to history"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">💾</button>
+        <button id="btn-print" title="Print / Save as PDF"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">🖨️</button>
+        <button id="btn-backup" title="Backup &amp; Restore"
+          class="w-9 h-9 rounded-full flex items-center justify-center text-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">⚙️</button>
+        <button id="btn-new" title="Start a new list"
+          class="hidden sm:flex w-9 h-9 rounded-full items-center justify-center text-lg bg-white dark:bg-gray-800 shadow border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">✨</button>
+      </div>
+    </div>
+
+    <!-- Row 2: Store tabs -->
+    <div id="store-tabs" class="flex gap-1.5 overflow-x-auto pb-1 items-center"></div>
+
+    <!-- Row 3: List name + mode toggle -->
+    <div class="flex items-center gap-2 mt-2">
+      <input id="list-name-input" type="text" value=""
+        class="font-semibold text-base flex-1 bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-green-500 dark:focus:border-green-400 outline-none py-0.5 transition-colors text-gray-700 dark:text-gray-200 min-w-0"
+        placeholder="List name...">
+      <div class="flex-shrink-0 flex gap-0 rounded-full overflow-hidden border border-gray-300 dark:border-gray-600 text-xs font-bold">
+        <button id="btn-shop-mode" class="px-3 py-1 transition-colors">🛒 Shop</button>
+        <button id="btn-edit-mode" class="px-3 py-1 transition-colors">✏️ Edit</button>
+      </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="mt-2 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div id="progress-bar" class="h-full bg-green-500 rounded-full transition-all duration-500" style="width:0%"></div>
+    </div>
+    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex justify-between items-center">
+      <span id="stats-text"></span>
+      <div class="flex items-center gap-3">
+        <span id="autosave-indicator" class="text-green-500 dark:text-green-400 font-semibold opacity-0 transition-opacity duration-500">✓ Saved</span>
+        <button id="btn-clear-checked" class="text-xs text-red-400 hover:text-red-600 font-semibold hidden">Clear checked</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Edit: Add Aisle bar -->
+  <div id="add-aisle-bar" class="no-print hidden mt-3 flex gap-2">
+    <input id="new-aisle-name" type="text" placeholder="New aisle name (e.g. Produce)..."
+      class="flex-1 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm focus:ring-2 focus:ring-green-400 outline-none">
+    <button id="btn-add-aisle"
+      class="bg-green-700 hover:bg-green-800 text-white text-sm font-bold px-4 py-2 rounded-xl shadow">+ Aisle</button>
+  </div>
+
+  <!-- Aisles -->
+  <div id="aisles-list" class="mt-3 flex flex-col gap-3"></div>
+  <div id="empty-state" class="hidden text-center py-16 text-gray-400 dark:text-gray-600">
+    <div class="text-5xl mb-3">🛒</div>
+    <p class="font-semibold text-lg">No aisles yet</p>
+    <p class="text-sm mt-1">Switch to <strong>✏️ Edit</strong> mode to add aisles and items.</p>
+  </div>
+</div>
+
+<!-- Deal counter bar (shown when deal mode is on) -->
+<div id="deal-counter-bar" class="hidden no-print">
+  <div id="deal-counter-inner"></div>
+</div>
+
+<!-- Mobile new-list FAB -->
+<button id="btn-new-mobile" title="Start a new list"
+  class="sm:hidden no-print fixed bottom-5 right-5 w-12 h-12 bg-green-700 text-white rounded-full shadow-xl flex items-center justify-center text-xl z-20 hover:bg-green-800">✨</button>
+
+<!-- Print area — only visible when printing -->
+<div id="print-area" class="hidden" style="padding:24pt 28pt; font-family:'Nunito',sans-serif;">
+  <div class="print-header">
+    <div id="print-store-name" class="print-store-name"></div>
+    <div id="print-list-title" class="print-list-title font-display"></div>
+    <div class="print-meta">
+      <span id="print-date"></span>
+      <span id="print-time"></span>
+      <span id="print-item-count"></span>
+    </div>
+  </div>
+  <div id="print-body"></div>
+  <div class="print-footer">
+    <span>🛒 Grocery List</span>
+    <span id="print-footer-store"></span>
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- History -->
+<div id="history-modal" class="modal-overlay hidden">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-1">
+      <h2 class="font-display text-xl font-bold text-green-800 dark:text-green-400">Saved Lists</h2>
+      <button id="btn-close-history" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 leading-none">&times;</button>
+    </div>
+    <p class="text-xs text-gray-400 dark:text-gray-500 mb-4">All stores · up to 10 saved</p>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<!-- Save -->
+<div id="save-dialog" class="modal-overlay hidden">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-xl font-bold text-green-800 dark:text-green-400">Save List</h2>
+      <button id="btn-close-save" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 leading-none">&times;</button>
+    </div>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mb-3">Name this snapshot to save it to history.</p>
+    <input id="save-name-input" type="text" placeholder="e.g. Weekly Shop – April 5"
+      class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-400 outline-none mb-4">
+    <div class="flex gap-2">
+      <button id="btn-do-save" class="flex-1 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-sm">💾 Save</button>
+      <button id="btn-cancel-save" class="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- New List -->
+<div id="new-dialog" class="modal-overlay hidden">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-display text-xl font-bold text-green-800 dark:text-green-400">New List</h2>
+      <button id="btn-close-new" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 leading-none">&times;</button>
+    </div>
+    <p id="new-dialog-sub" class="text-sm text-gray-500 dark:text-gray-400 mb-4"></p>
+    <div class="flex flex-col gap-2">
+      <button id="btn-new-keep-aisles"
+        class="w-full text-left bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-xl px-4 py-3 text-sm font-semibold">
+        🔄 Keep aisles, clear all items
+        <span class="block font-normal text-gray-500 dark:text-gray-400 text-xs mt-0.5">Same store layout, fresh item list</span>
+      </button>
+      <button id="btn-new-blank"
+        class="w-full text-left bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl px-4 py-3 text-sm font-semibold">
+        📄 Start completely fresh
+        <span class="block font-normal text-gray-500 dark:text-gray-400 text-xs mt-0.5">Reset aisles and items for this store</span>
+      </button>
+      <button id="btn-close-new2"
+        class="w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Aisle -->
+<div id="rename-dialog" class="modal-overlay hidden">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-display text-xl font-bold text-green-800 dark:text-green-400">Rename Aisle</h2>
+      <button id="btn-close-rename" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 leading-none">&times;</button>
+    </div>
+    <input id="rename-aisle-input" type="text"
+      class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-400 outline-none mb-4">
+    <div class="flex gap-2">
+      <button id="btn-do-rename" class="flex-1 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-sm">Rename</button>
+      <button id="btn-cancel-rename" class="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Store dialog (add or rename) -->
+<div id="store-dialog" class="modal-overlay hidden">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-2">
+      <h2 id="store-dialog-title" class="font-display text-xl font-bold text-green-800 dark:text-green-400"></h2>
+      <button id="btn-close-store-dialog" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 leading-none">&times;</button>
+    </div>
+    <p id="store-dialog-sub" class="text-sm text-gray-400 dark:text-gray-500 mb-4"></p>
+    <p class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-2">Choose an icon</p>
+    <div id="emoji-picker" class="flex flex-wrap gap-2 mb-4"></div>
+    <input id="store-name-input" type="text" placeholder="Store name (e.g. Meijer, Costco, Aldi)..."
+      class="w-full rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2.5 text-sm focus:ring-2 focus:ring-green-400 outline-none mb-4">
+    <div class="flex gap-2">
+      <button id="btn-do-store" class="flex-1 bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-sm"></button>
+      <button id="btn-cancel-store" class="flex-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-bold py-2.5 rounded-xl text-sm">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Backup / Restore -->
+<div id="backup-dialog" class="modal-overlay hidden">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="font-display text-xl font-bold text-green-800 dark:text-green-400">⚙️ Backup & Restore</h2>
+      <button id="btn-close-backup" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 leading-none">&times;</button>
+    </div>
+
+    <!-- How data is saved -->
+    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 mb-4">
+      <p class="text-xs font-bold text-blue-700 dark:text-blue-300 mb-1">📱 How your data is saved</p>
+      <p class="text-xs text-blue-600 dark:text-blue-400 leading-relaxed">Your stores, aisles, and lists are automatically saved in this browser. <strong>Closing and reopening this file is fine</strong> — your data will be here.</p>
+      <p class="text-xs text-blue-600 dark:text-blue-400 leading-relaxed mt-1.5">⚠️ Your data may be lost if you <strong>clear your browser history</strong>, use a <strong>different browser</strong>, or open the file on a <strong>different computer</strong>. Use the backup below to protect against this.</p>
+    </div>
+
+    <!-- Export -->
+    <div class="mb-3">
+      <p class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">📤 Export backup</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Downloads all your stores, aisles, items, and saved lists as a file you can keep anywhere.</p>
+      <button id="btn-export"
+        class="w-full bg-green-700 hover:bg-green-800 text-white font-bold py-2.5 rounded-xl text-sm">Download Backup File</button>
+    </div>
+
+    <div class="border-t border-gray-200 dark:border-gray-700 my-3"></div>
+
+    <!-- Import -->
+    <div>
+      <p class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">📥 Restore from backup</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Load a previously exported backup file. <strong>This will replace all current data.</strong></p>
+      <label class="block w-full cursor-pointer">
+        <span class="w-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-bold py-2.5 rounded-xl text-sm transition">Choose Backup File…</span>
+        <input id="import-file-input" type="file" accept=".json" class="hidden">
+      </label>
+    </div>
+
+    <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+
+    <!-- Settings -->
+    <div>
+      <p class="text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">🛠️ Settings</p>
+
+      <!-- On Sale labels -->
+      <div class="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-gray-700">
+        <div>
+          <p class="text-sm font-semibold">🏷️ On Sale labels</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Show a tap-to-toggle Sale badge on each item</p>
+        </div>
+        <button id="toggle-sale-labels" data-action="toggle-setting" data-setting="showSaleTag"
+          class="relative w-11 h-6 rounded-full transition-colors flex-shrink-0">
+          <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"></span>
+        </button>
+      </div>
+
+      <!-- Deal counter -->
+      <div class="flex items-center justify-between py-2.5 border-b border-gray-100 dark:border-gray-700">
+        <div>
+          <p class="text-sm font-semibold">⭐ Deal counter</p>
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Track "buy X get a deal" promotions (e.g. 5 for $5)</p>
+        </div>
+        <button id="toggle-deal-mode" data-action="toggle-setting" data-setting="dealMode"
+          class="relative w-11 h-6 rounded-full transition-colors flex-shrink-0">
+          <span class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform"></span>
+        </button>
+      </div>
+
+      <!-- Deal config (visible when deal mode on) -->
+      <div id="deal-config" class="mt-3 hidden">
+        <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-xl p-3 flex flex-col gap-3">
+          <div>
+            <label class="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1">Deal name / label</label>
+            <input id="deal-label-input" type="text" placeholder="e.g. 5 for $5, Mix &amp; Match"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm focus:ring-2 focus:ring-orange-400 outline-none">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-gray-600 dark:text-gray-300 block mb-1">How many items needed for the deal?</label>
+            <div class="flex items-center gap-3">
+              <button id="deal-target-dec" class="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-bold text-lg flex items-center justify-center">−</button>
+              <span id="deal-target-display" class="text-xl font-bold w-8 text-center"></span>
+              <button id="deal-target-inc" class="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 font-bold text-lg flex items-center justify-center">+</button>
+              <span class="text-sm text-gray-500 dark:text-gray-400">items</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Load history: choose store -->
+<div id="load-store-dialog" class="modal-overlay hidden">
+  <div class="modal-box p-5">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-display text-xl font-bold text-green-800 dark:text-green-400">Load Into Store</h2>
+      <button id="btn-close-load-store" class="text-2xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 leading-none">&times;</button>
+    </div>
+    <p id="load-store-sub" class="text-sm text-gray-500 dark:text-gray-400 mb-4"></p>
+    <div id="load-store-options" class="flex flex-col gap-2"></div>
+  </div>
+</div>
+
+<!-- ══════════════ SCRIPT ══════════════ -->
+<script>
+'use strict';
+
+const SK = { stores: 'gl_stores2', hist: 'gl_hist2', prefs: 'gl_prefs' };
+
+const STORE_COLORS = [
+  { bg:'bg-green-600',  activeBg:'#16a34a', ring:'ring-green-500',  lightText:'text-green-800',  darkText:'dark:text-green-300'  },
+  { bg:'bg-blue-600',   activeBg:'#2563eb', ring:'ring-blue-500',   lightText:'text-blue-800',   darkText:'dark:text-blue-300'   },
+  { bg:'bg-purple-600', activeBg:'#9333ea', ring:'ring-purple-500', lightText:'text-purple-800', darkText:'dark:text-purple-300' },
+  { bg:'bg-orange-500', activeBg:'#f97316', ring:'ring-orange-500', lightText:'text-orange-800', darkText:'dark:text-orange-300' },
+  { bg:'bg-rose-600',   activeBg:'#e11d48', ring:'ring-rose-500',   lightText:'text-rose-800',   darkText:'dark:text-rose-300'   },
+];
+
+const STORE_EMOJIS = ['🏪','🛒','🏬','🌿','🥩','🧊','🍞','☕','🌾','🐄','🛍️','🏷️','🥦','🍷','🧴'];
+const AISLE_COLORS = ['bg-green-500','bg-emerald-500','bg-teal-500','bg-cyan-500','bg-sky-500','bg-blue-500','bg-indigo-500','bg-violet-500','bg-purple-500','bg-pink-500','bg-rose-500','bg-orange-500','bg-amber-500','bg-lime-500'];
+
+let S = {
+  stores: [],
+  activeStoreId: null,
+  mode: 'shop',
+  darkMode: false,
+  savedLists: [],
+  renameAisleId: null,
+  storeDialogMode: 'add',
+  storeDialogId: null,
+  storeDialogEmoji: '🏪',
+  pendingHistLoad: null,
+  settings: {
+    showSaleTag: true,
+    dealMode: false,
+    dealTarget: 5,
+    dealLabel: '5 for $5',
+  },
+};
+
+// ── Helpers ──
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const activeStore = () => S.stores.find(s => s.id === S.activeStoreId) || S.stores[0];
+const storeIdx = id => S.stores.findIndex(s => s.id === id);
+const storeColor = idx => STORE_COLORS[idx % STORE_COLORS.length];
+const aisleColor = idx => AISLE_COLORS[idx % AISLE_COLORS.length];
+
+function defaultAisles() {
+  return ['Produce','Dairy & Eggs','Meat & Seafood','Bread & Bakery','Frozen Foods','Pantry / Dry Goods']
+    .map(name => ({id:uid(),name,collapsed:false,items:[]}));
+}
+function defaultStore(name, emoji, colorIdx) {
+  return {id:uid(), name:name||'My Store', emoji:emoji||'🏪', colorIdx:colorIdx||0, aisles:defaultAisles(), listName:'My Grocery List'};
+}
+
+// ── Persistence ──
+const persist = () => { try { localStorage.setItem(SK.stores, JSON.stringify({stores:S.stores, activeStoreId:S.activeStoreId})); flashSaved(); } catch(e){} };
+function flashSaved() { const el=document.getElementById('autosave-indicator'); if(!el) return; el.style.opacity='1'; clearTimeout(window._saveTimer); window._saveTimer=setTimeout(()=>{el.style.opacity='0';},1800); }
+const persistHist = () => { try { localStorage.setItem(SK.hist, JSON.stringify(S.savedLists)); } catch(e){} };
+const persistPrefs = () => { try { localStorage.setItem(SK.prefs, JSON.stringify({darkMode:S.darkMode, settings:S.settings})); } catch(e){} };
+
+function loadAll() {
+  try {
+    const p=JSON.parse(localStorage.getItem(SK.prefs)||'null');
+    if(p) { S.darkMode=!!p.darkMode; if(p.settings) S.settings={...S.settings,...p.settings}; }
+  } catch(e){}
+  try {
+    const d = JSON.parse(localStorage.getItem(SK.stores)||'null');
+    if (d && Array.isArray(d.stores) && d.stores.length) {
+      S.stores = d.stores;
+      S.activeStoreId = d.activeStoreId || S.stores[0].id;
+    } else {
+      // Try migrating old single-list data
+      let firstStore = defaultStore('My Store','🏪',0);
+      try { const old=JSON.parse(localStorage.getItem('gl_cur')||'null'); if(old&&Array.isArray(old.aisles)){firstStore.aisles=old.aisles;firstStore.listName=old.listName||'My Grocery List';} } catch(e){}
+      S.stores = [firstStore];
+      S.activeStoreId = firstStore.id;
+    }
+  } catch(e) { S.stores=[defaultStore('My Store','🏪',0)]; S.activeStoreId=S.stores[0].id; }
+  try { S.savedLists=JSON.parse(localStorage.getItem(SK.hist)||'[]'); } catch(e){S.savedLists=[];}
+}
+
+function applyTheme() {
+  document.documentElement.classList.toggle('dark',S.darkMode);
+  document.getElementById('btn-dark').textContent = S.darkMode?'☀️':'🌙';
+  persistPrefs();
+}
+
+function getStats() {
+  const st=activeStore(); if(!st) return {total:0,checked:0,remaining:0};
+  let total=0,checked=0;
+  st.aisles.forEach(a=>a.items.forEach(i=>{total++;if(i.checked)checked++;}));
+  return {total,checked,remaining:total-checked};
+}
+
+// ══════════════ RENDER ══════════════
+function render() {
+  applyTheme();
+  renderStoreTabs();
+  renderModeButtons();
+  document.getElementById('add-aisle-bar').classList.toggle('hidden', S.mode!=='edit');
+  renderAisles();
+  renderStats();
+  renderDealCounter();
+  updateHistoryBadge();
+  updateListName();
+}
+
+function renderStoreTabs() {
+  const isEdit = S.mode==='edit';
+  const tabs = S.stores.map((store,idx) => {
+    const col = storeColor(idx);
+    const isActive = store.id === S.activeStoreId;
+    const activeStyle = `background:${col.activeBg};color:white;`;
+    const inactiveClass = `bg-white dark:bg-gray-800 ${col.lightText} ${col.darkText} border border-gray-200 dark:border-gray-700`;
+    const editBtns = isEdit ? `
+      <button data-action="store-rename" data-store-id="${store.id}" class="opacity-60 hover:opacity-100 text-xs leading-none" title="Rename">✏️</button>
+      ${S.stores.length>1?`<button data-action="store-delete" data-store-id="${store.id}" class="opacity-60 hover:opacity-100 text-xs leading-none" title="Delete">✕</button>`:''}
+    ` : '';
+    return `<button data-action="switch-store" data-store-id="${store.id}"
+      class="store-tab flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all ${isActive?'shadow-sm':inactiveClass}"
+      ${isActive?`style="${activeStyle}"`:''}
+    ><span>${esc(store.emoji)}</span><span class="max-w-[90px] truncate">${esc(store.name)}</span>${editBtns}</button>`;
+  }).join('');
+
+  const addBtn = S.stores.length<5
+    ? `<button data-action="store-add" class="flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400 transition-all">+ Store</button>`
+    : `<span class="flex-shrink-0 text-[10px] text-gray-400 italic px-1">5 stores max</span>`;
+
+  document.getElementById('store-tabs').innerHTML = tabs + addBtn;
+}
+
+function renderModeButtons() {
+  const on='bg-green-700 text-white', off='bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700';
+  document.getElementById('btn-shop-mode').className=`px-3 py-1 transition-colors ${S.mode==='shop'?on:off}`;
+  document.getElementById('btn-edit-mode').className=`px-3 py-1 transition-colors ${S.mode==='edit'?on:off}`;
+}
+
+function renderStats() {
+  const {total,checked,remaining}=getStats();
+  document.getElementById('progress-bar').style.width=(total?(checked/total)*100:0)+'%';
+  const el=document.getElementById('stats-text');
+  el.textContent = !total?'No items yet':(!remaining?`✅ All ${total} item${total!==1?'s':''} checked!`:`${remaining} of ${total} item${total!==1?'s':''} remaining`);
+  document.getElementById('btn-clear-checked').classList.toggle('hidden',checked===0);
+}
+
+// Parse leading integer from qty string for deal counting ("2 lbs" → 2, "x3" → 3, "" → 1)
+function parseDealQty(qty) {
+  if (!qty) return 1;
+  const n = parseInt(qty.replace(/[^\d]/g, ''));   // strip non-digits, parse first run
+  return (isNaN(n) || n < 1) ? 1 : n;
+}
+
+function renderDealCounter() {
+  const bar=document.getElementById('deal-counter-bar'), inner=document.getElementById('deal-counter-inner');
+  if (!S.settings.dealMode) { bar.classList.add('hidden'); return; }
+  const st=activeStore();
+  let dealCount=0;
+  if (st) st.aisles.forEach(a=>a.items.forEach(i=>{if(i.isDeal&&!i.checked)dealCount+=parseDealQty(i.qty);}));
+  const target=S.settings.dealTarget||5, label=esc(S.settings.dealLabel||'Deal');
+  const sets=Math.floor(dealCount/target);          // completed sets
+  const partial=dealCount%target;                   // items into the next set
+  const needMore=partial===0&&dealCount===0?target:target-partial;  // items still needed
+  const barPct=partial===0&&sets>0?100:Math.round(partial/target*100);
+
+  bar.classList.remove('hidden');
+
+  // Status line
+  let statusHtml='';
+  if (dealCount===0) {
+    statusHtml=`<span class="text-gray-400 dark:text-gray-500">Tap ⭐ on qualifying items to start tracking</span>`;
+  } else if (sets===0) {
+    statusHtml=`<span class="text-orange-500">${needMore} more item${needMore!==1?'s':''} to complete the deal</span>`;
+  } else if (partial===0) {
+    // Exactly on a boundary
+    statusHtml=`<span class="text-green-600 dark:text-green-400 font-bold">✅ ${sets} × ${label} deal${sets!==1?'s':''} in cart!</span>
+      <span class="text-gray-400 dark:text-gray-500 ml-2">Add ${target} more for another</span>`;
+  } else {
+    // Mid-way through another set
+    statusHtml=`<span class="text-green-600 dark:text-green-400 font-bold">✅ ${sets} complete</span>
+      <span class="text-orange-500 ml-2">+ ${partial}/${target} toward another deal</span>`;
+  }
+
+  inner.innerHTML=`
+    <div class="bg-white dark:bg-gray-800 border border-orange-200 dark:border-orange-800 rounded-2xl shadow-lg px-4 py-2.5">
+      <div class="flex items-center justify-between mb-1.5">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-base flex-shrink-0">⭐</span>
+          <span class="text-sm font-bold text-orange-700 dark:text-orange-300 truncate">${label}</span>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+          ${sets>0?`<span class="text-[10px] font-bold bg-green-500 text-white rounded-full px-2 py-0.5">${sets}×</span>`:''}
+          <span class="text-sm font-bold text-gray-700 dark:text-gray-200">${dealCount} item${dealCount!==1?'s':''}</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 mb-1">
+        <div class="flex-1 h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-400 ${sets>0&&partial===0?'bg-green-400':'bg-orange-400'}" style="width:${barPct}%"></div>
+        </div>
+        <span class="text-[10px] text-gray-400 flex-shrink-0">${partial||target}/${target}</span>
+      </div>
+      <p class="text-[10px]">${statusHtml}</p>
+    </div>`;
+}
+
+function renderSettingsPanel() {
+  ['toggle-sale-labels','toggle-deal-mode'].forEach(id=>{
+    const btn=document.getElementById(id); if(!btn) return;
+    const on=S.settings[btn.dataset.setting];
+    btn.className=`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${on?'bg-green-500':'bg-gray-300 dark:bg-gray-600'}`;
+    btn.querySelector('span').style.transform=on?'translateX(20px)':'translateX(0)';
+  });
+  const dc=document.getElementById('deal-config'); if(dc) dc.classList.toggle('hidden',!S.settings.dealMode);
+  const li=document.getElementById('deal-label-input'); if(li&&li!==document.activeElement) li.value=S.settings.dealLabel||'';
+  const td=document.getElementById('deal-target-display'); if(td) td.textContent=S.settings.dealTarget||5;
+}
+
+function updateHistoryBadge() {
+  const b=document.getElementById('hist-badge');
+  if(S.savedLists.length){b.classList.remove('hidden');b.textContent=S.savedLists.length;}else b.classList.add('hidden');
+}
+
+function updateListName() {
+  const st=activeStore(), inp=document.getElementById('list-name-input');
+  if(inp!==document.activeElement) inp.value=st?st.listName:'';
+}
+
+function renderAisles() {
+  const st=activeStore(), container=document.getElementById('aisles-list'), empty=document.getElementById('empty-state');
+  if(!st||!st.aisles.length){container.innerHTML='';empty.classList.remove('hidden');return;}
+  empty.classList.add('hidden');
+  container.innerHTML=st.aisles.map((a,i)=>buildAisleCard(a,i)).join('');
+  attachDragListeners();
+}
+
+function buildAisleCard(aisle,idx) {
+  const isEdit=S.mode==='edit', col=aisleColor(idx);
+  const checked=aisle.items.filter(i=>i.checked).length, total=aisle.items.length;
+  const st=activeStore();
+
+  const editCtrl = isEdit?`<div class="flex items-center gap-1 ml-2 flex-shrink-0">
+    <button class="w-7 h-7 rounded flex items-center justify-center text-sm transition ${idx===0?'opacity-30 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'}"
+      data-action="aisle-up" data-aisle-id="${aisle.id}" ${idx===0?'disabled':''}>▲</button>
+    <button class="w-7 h-7 rounded flex items-center justify-center text-sm transition ${idx===st.aisles.length-1?'opacity-30 cursor-not-allowed':'hover:bg-gray-100 dark:hover:bg-gray-700'}"
+      data-action="aisle-down" data-aisle-id="${aisle.id}" ${idx===st.aisles.length-1?'disabled':''}>▼</button>
+    <button class="w-7 h-7 rounded flex items-center justify-center text-sm hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-500 transition"
+      data-action="aisle-rename" data-aisle-id="${aisle.id}">✏️</button>
+    <button class="w-7 h-7 rounded flex items-center justify-center text-sm hover:bg-red-50 dark:hover:bg-red-900/30 text-red-400 transition"
+      data-action="aisle-delete" data-aisle-id="${aisle.id}">🗑️</button>
+  </div>`:'';
+
+  const items=aisle.items.map(item=>{
+    const done=item.checked?'done':'';
+    const onSale=item.onSale?'on-sale':'';
+
+    const saleBtn = S.settings.showSaleTag
+      ? `<button data-action="item-sale" data-aisle-id="${aisle.id}" data-item-id="${item.id}"
+           class="flex-shrink-0 no-print text-[10px] font-bold px-1.5 py-0.5 rounded transition-all ${item.onSale
+             ? 'bg-red-500 text-white'
+             : 'border border-gray-200 dark:border-gray-600 text-gray-300 dark:text-gray-600 hover:border-red-300 hover:text-red-400'
+           }" title="${item.onSale?'Remove sale tag':'Mark as on sale'}">${item.onSale?'SALE':'sale?'}</button>`
+      : '';
+
+    const dealBtn = S.settings.dealMode
+      ? `<button data-action="item-deal" data-aisle-id="${aisle.id}" data-item-id="${item.id}"
+           class="flex-shrink-0 no-print w-6 h-6 flex items-center justify-center rounded-full transition-all text-sm ${item.isDeal
+             ? 'bg-orange-400 text-white'
+             : 'text-gray-300 dark:text-gray-600 hover:text-orange-400'
+           }" title="${item.isDeal?'Remove from deal':'Count toward deal'}">⭐</button>`
+      : '';
+
+    const del=`<button data-action="item-delete" data-aisle-id="${aisle.id}" data-item-id="${item.id}"
+      class="ml-1 text-red-300 hover:text-red-500 flex-shrink-0 no-print w-6 h-6 flex items-center justify-center text-sm" title="Remove item">✕</button>`;
+
+    return `<div class="item-row ${done} ${onSale} flex items-center gap-2 py-1.5 border-b border-gray-50 dark:border-gray-700/50 last:border-0">
+      <label class="chk-wrap no-print"><input type="checkbox" ${item.checked?'checked':''} data-action="item-check" data-aisle-id="${aisle.id}" data-item-id="${item.id}"><div class="chk-circle"></div></label>
+      <span class="item-text flex-1 text-sm">${esc(item.name)}</span>
+      ${item.qty?`<span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 italic">${esc(item.qty)}</span>`:''}
+      ${saleBtn}${dealBtn}${del}
+    </div>`;
+  }).join('');
+
+  const addRow=`<div class="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 no-print">
+    <input id="add-item-${aisle.id}" data-aisle-id="${aisle.id}" data-action="add-item-input" type="text" placeholder="Add item..."
+      class="flex-1 text-sm bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-green-400 outline-none min-w-0">
+    <input id="add-qty-${aisle.id}" data-aisle-id="${aisle.id}" data-action="add-qty-input" type="text" placeholder="Qty"
+      class="w-16 text-sm bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-green-400 outline-none">
+    <button data-action="do-add-item" data-aisle-id="${aisle.id}"
+      class="bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0">Add</button>
+  </div>`;
+
+  return `<div class="aisle-card bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden" data-aisle-id="${aisle.id}" draggable="${isEdit}">
+    <div class="flex items-center gap-2 px-3 py-2.5">
+      <div class="w-1 h-8 ${col} rounded-full flex-shrink-0"></div>
+      ${isEdit?'<span class="text-gray-300 dark:text-gray-600 text-lg select-none">⠿</span>':''}
+      <span class="font-bold text-sm sm:text-base flex-1 truncate">${esc(aisle.name)}</span>
+      ${total?`<span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">${checked}/${total}</span>`:''}
+      ${editCtrl}
+      <button data-action="aisle-collapse" data-aisle-id="${aisle.id}"
+        class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0 text-lg font-bold ml-1 no-print">${aisle.collapsed?'›':'⌄'}</button>
+    </div>
+    <div class="collapse-body ${aisle.collapsed?'hidden-body':''}">
+      <div class="px-3 pb-3">
+        ${items?`<div class="flex flex-col gap-0.5">${items}</div>`:'<p class="text-xs text-gray-400 dark:text-gray-600 italic py-1">No items yet</p>'}
+        ${addRow}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderHistoryModal(show) {
+  const modal=document.getElementById('history-modal'), list=document.getElementById('history-list');
+  if(show!==undefined) modal.classList.toggle('hidden',!show);
+  if(!S.savedLists.length){
+    list.innerHTML='<p class="text-center text-gray-400 dark:text-gray-600 py-8 text-sm">No saved lists yet.<br>Hit 💾 to save your current list.</p>';
+    return;
+  }
+  list.innerHTML=S.savedLists.map(sl=>`
+    <div class="border border-gray-200 dark:border-gray-700 rounded-xl mb-2 overflow-hidden">
+      <div class="h-1" style="background:${sl.storeColorHex||'#16a34a'}"></div>
+      <div class="p-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <p class="font-bold text-sm truncate">${esc(sl.name)}</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">${sl.storeEmoji||'🏪'} ${esc(sl.storeName||'Store')} · ${esc(sl.savedAt)} · ${sl.aisles.reduce((t,a)=>t+a.items.length,0)} items</p>
+          </div>
+          <div class="flex gap-1 flex-shrink-0">
+            <button data-action="hist-load" data-hist-id="${sl.id}" class="bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Load</button>
+            <button data-action="hist-delete" data-hist-id="${sl.id}" class="bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-500 text-xs font-bold px-3 py-1.5 rounded-lg">Del</button>
+          </div>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-1">
+          ${sl.aisles.filter(a=>a.items.length>0).slice(0,5).map(a=>`<span class="text-[10px] bg-gray-100 dark:bg-gray-700 rounded px-1.5 py-0.5">${esc(a.name)} (${a.items.length})</span>`).join('')}
+          ${sl.aisles.filter(a=>a.items.length>0).length>5?'<span class="text-[10px] text-gray-400">+more</span>':''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openStoreDialog(mode, storeId) {
+  S.storeDialogMode=mode; S.storeDialogId=storeId||null;
+  const store=storeId?S.stores.find(s=>s.id===storeId):null;
+  document.getElementById('store-dialog-title').textContent = mode==='add'?'Add Store':'Rename Store';
+  document.getElementById('store-dialog-sub').textContent = mode==='add'
+    ? `Store ${S.stores.length+1} of 5 — give this location its own aisle layout.`
+    : 'Update this store\'s name or icon.';
+  document.getElementById('btn-do-store').textContent = mode==='add'?'+ Add Store':'Save Changes';
+  document.getElementById('store-name-input').value = store?store.name:'';
+  S.storeDialogEmoji = store?store.emoji:'🏪';
+  renderEmojiPicker();
+  document.getElementById('store-dialog').classList.remove('hidden');
+  setTimeout(()=>{const i=document.getElementById('store-name-input');i.focus();if(mode==='rename')i.select();},50);
+}
+
+function renderEmojiPicker() {
+  document.getElementById('emoji-picker').innerHTML=STORE_EMOJIS.map(e=>`
+    <button data-action="pick-emoji" data-emoji="${e}"
+      class="text-xl w-9 h-9 rounded-lg flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition ${e===S.storeDialogEmoji?'bg-green-100 dark:bg-green-900/40 ring-2 ring-green-400':''}">${e}</button>`).join('');
+}
+
+function openLoadStoreDialog(histId) {
+  S.pendingHistLoad=histId;
+  const entry=S.savedLists.find(l=>l.id===histId); if(!entry) return;
+  document.getElementById('load-store-sub').textContent=`Load "${entry.name}" into which store?`;
+  document.getElementById('load-store-options').innerHTML=S.stores.map((st,i)=>{
+    const col=storeColor(i);
+    return `<button data-action="do-load-store" data-store-id="${st.id}"
+      class="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-current ${col.lightText} ${col.darkText} bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 text-sm font-semibold transition">
+      <span class="text-xl">${esc(st.emoji)}</span>
+      <span>${esc(st.name)}</span>
+      ${st.id===S.activeStoreId?'<span class="ml-auto text-xs text-gray-400 font-normal">current</span>':''}
+    </button>`;
+  }).join('');
+  document.getElementById('load-store-dialog').classList.remove('hidden');
+}
+
+function preparePrint() {
+  const st = activeStore();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+  const timeStr = now.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+
+  document.getElementById('print-store-name').textContent = st ? `${st.emoji}  ${st.name}` : '';
+  document.getElementById('print-list-title').textContent = st ? st.listName : 'Grocery List';
+  document.getElementById('print-date').textContent = dateStr;
+  document.getElementById('print-time').textContent = timeStr;
+
+  const aisles = st ? st.aisles.filter(a => a.items.length > 0) : [];
+  const totalItems = aisles.reduce((t,a) => t + a.items.length, 0);
+  const unchecked = aisles.reduce((t,a) => t + a.items.filter(i=>!i.checked).length, 0);
+  document.getElementById('print-item-count').textContent =
+    totalItems === unchecked ? `${totalItems} item${totalItems!==1?'s':''}` :
+    `${unchecked} of ${totalItems} items remaining`;
+  document.getElementById('print-footer-store').textContent = st ? `${st.name}` : '';
+
+  document.getElementById('print-body').innerHTML = aisles.map(aisle => {
+    const itemsHtml = aisle.items.map(item => {
+      const saleTag = item.onSale ? `<span class="print-item-sale">SALE</span>` : '';
+      const qty = item.qty ? `<span class="print-item-qty">${esc(item.qty)}</span>` : '';
+      return `
+        <div class="print-item">
+          <div class="print-check ${item.checked?'checked-box':''}"></div>
+          <span class="print-item-name ${item.checked?'crossed':''}">
+            ${esc(item.name)}${item.isDeal&&S.settings.dealMode?' ⭐':''}
+          </span>
+          ${qty}
+          ${saleTag}
+        </div>`;
+    }).join('');
+    return `<div class="print-aisle">
+      <div class="print-aisle-title">${esc(aisle.name)}</div>
+      ${itemsHtml}
+    </div>`;
+  }).join('');
+}
+
+// ── Drag ──
+let dragSrcIdx=null;
+function attachDragListeners() {
+  if(S.mode!=='edit') return;
+  document.querySelectorAll('.aisle-card[draggable="true"]').forEach((card,idx)=>{
+    card.addEventListener('dragstart',e=>{dragSrcIdx=idx;setTimeout(()=>card.classList.add('dragging'),0);e.dataTransfer.effectAllowed='move';});
+    card.addEventListener('dragend',()=>{card.classList.remove('dragging');document.querySelectorAll('.aisle-card').forEach(c=>c.classList.remove('drag-over'));dragSrcIdx=null;});
+    card.addEventListener('dragover',e=>{e.preventDefault();document.querySelectorAll('.aisle-card').forEach(c=>c.classList.remove('drag-over'));card.classList.add('drag-over');});
+    card.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(dragSrcIdx!==null&&dragSrcIdx!==idx){
+        const st=activeStore(),moved=st.aisles.splice(dragSrcIdx,1)[0];
+        st.aisles.splice(idx,0,moved);persist();renderAisles();
+      }
+    });
+  });
+}
+
+// ── Event delegation ──
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-action]'); if(!btn) return;
+  const {action,aisleId,itemId,histId,storeId,emoji}=btn.dataset;
+
+  switch(action) {
+
+    case 'switch-store':
+      if(storeId&&storeId!==S.activeStoreId){S.activeStoreId=storeId;persist();render();} break;
+
+    case 'store-add':
+      if(S.stores.length>=5){alert('You can save up to 5 stores.');return;}
+      openStoreDialog('add'); break;
+
+    case 'store-rename': openStoreDialog('rename',storeId); break;
+
+    case 'store-delete': {
+      const st=S.stores.find(s=>s.id===storeId); if(!st) break;
+      const cnt=st.aisles.reduce((t,a)=>t+a.items.length,0);
+      if(!confirm(cnt?`Delete "${st.name}" and its ${cnt} item(s)?`:`Delete store "${st.name}"?`)) break;
+      S.stores=S.stores.filter(s=>s.id!==storeId);
+      if(S.activeStoreId===storeId) S.activeStoreId=S.stores[0]?.id||null;
+      persist();render(); break;
+    }
+
+    case 'pick-emoji':
+      S.storeDialogEmoji=btn.dataset.emoji; renderEmojiPicker(); break;
+
+    case 'item-sale': {
+      const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId),item=a?.items.find(i=>i.id===itemId);
+      if(item){item.onSale=!item.onSale;persist();renderAisles();} break;
+    }
+
+    case 'item-deal': {
+      const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId),item=a?.items.find(i=>i.id===itemId);
+      if(item){item.isDeal=!item.isDeal;persist();renderAisles();renderDealCounter();} break;
+    }
+
+    case 'toggle-setting': {
+      const key=btn.dataset.setting;
+      S.settings[key]=!S.settings[key];
+      persistPrefs();renderSettingsPanel();renderAisles();renderDealCounter(); break;
+    }
+
+    case 'item-check': {
+      const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId),item=a?.items.find(i=>i.id===itemId);
+      if(item){item.checked=!item.checked;if(S.mode==='shop'&&item.checked){const i2=a.items.indexOf(item);a.items.splice(i2,1);a.items.push(item);}persist();renderAisles();renderStats();} break;
+    }
+
+    case 'item-delete': {
+      const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId);
+      if(a){a.items=a.items.filter(i=>i.id!==itemId);persist();renderAisles();renderStats();} break;
+    }
+
+    case 'do-add-item': addItem(aisleId); break;
+
+    case 'aisle-collapse': {
+      const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId);
+      if(a){a.collapsed=!a.collapsed;persist();renderAisles();} break;
+    }
+
+    case 'aisle-up':
+    case 'aisle-down': {
+      const st=activeStore(); if(!st) break;
+      const i=st.aisles.findIndex(a=>a.id===aisleId),j=action==='aisle-up'?i-1:i+1;
+      if(j>=0&&j<st.aisles.length){[st.aisles[j],st.aisles[i]]=[st.aisles[i],st.aisles[j]];persist();renderAisles();} break;
+    }
+
+    case 'aisle-rename': {
+      const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId); if(!a) break;
+      S.renameAisleId=aisleId;
+      document.getElementById('rename-aisle-input').value=a.name;
+      document.getElementById('rename-dialog').classList.remove('hidden');
+      setTimeout(()=>{const i=document.getElementById('rename-aisle-input');i.focus();i.select();},50); break;
+    }
+
+    case 'aisle-delete': {
+      const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId); if(!a) break;
+      if(!confirm(a.items.length?`Delete "${a.name}" and all ${a.items.length} item(s)?`:`Delete aisle "${a.name}"?`)) break;
+      st.aisles=st.aisles.filter(x=>x.id!==aisleId);persist();render(); break;
+    }
+
+    case 'hist-load': openLoadStoreDialog(histId); break;
+
+    case 'do-load-store': {
+      const entry=S.savedLists.find(l=>l.id===S.pendingHistLoad); if(!entry) break;
+      const target=S.stores.find(s=>s.id===storeId); if(!target) break;
+      target.aisles=JSON.parse(JSON.stringify(entry.aisles));
+      target.listName=entry.name;
+      S.activeStoreId=target.id;
+      persist();
+      document.getElementById('load-store-dialog').classList.add('hidden');
+      document.getElementById('history-modal').classList.add('hidden');
+      S.pendingHistLoad=null;
+      render(); break;
+    }
+
+    case 'hist-delete':
+      if(!confirm('Delete this saved list?')) break;
+      S.savedLists=S.savedLists.filter(l=>l.id!==histId);
+      persistHist();renderHistoryModal();updateHistoryBadge(); break;
+  }
+});
+
+// ── Header buttons ──
+document.getElementById('btn-dark').addEventListener('click',()=>{S.darkMode=!S.darkMode;applyTheme();});
+document.getElementById('btn-shop-mode').addEventListener('click',()=>{S.mode='shop';render();});
+document.getElementById('btn-edit-mode').addEventListener('click',()=>{S.mode='edit';render();});
+document.getElementById('btn-history').addEventListener('click',()=>renderHistoryModal(true));
+document.getElementById('btn-close-history').addEventListener('click',()=>document.getElementById('history-modal').classList.add('hidden'));
+document.getElementById('btn-print').addEventListener('click',()=>{preparePrint();window.print();});
+
+document.getElementById('btn-save').addEventListener('click',()=>{
+  const st=activeStore(),inp=document.getElementById('save-name-input');
+  inp.value=st?st.listName:'';
+  document.getElementById('save-dialog').classList.remove('hidden');
+  setTimeout(()=>{inp.focus();inp.select();},50);
+});
+document.getElementById('btn-close-save').addEventListener('click',()=>document.getElementById('save-dialog').classList.add('hidden'));
+document.getElementById('btn-cancel-save').addEventListener('click',()=>document.getElementById('save-dialog').classList.add('hidden'));
+document.getElementById('btn-do-save').addEventListener('click',()=>{
+  const st=activeStore(); if(!st) return;
+  const name=document.getElementById('save-name-input').value.trim()||st.listName||'My List';
+  const idx=storeIdx(st.id),col=storeColor(idx);
+  S.savedLists.unshift({
+    id:uid(),name,storeName:st.name,storeEmoji:st.emoji,storeColorHex:col.activeBg,
+    savedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}),
+    aisles:JSON.parse(JSON.stringify(st.aisles))
+  });
+  if(S.savedLists.length>10) S.savedLists=S.savedLists.slice(0,10);
+  persistHist();updateHistoryBadge();
+  document.getElementById('save-dialog').classList.add('hidden');
+  const b=document.getElementById('btn-save');b.textContent='✅';setTimeout(()=>b.textContent='💾',1500);
+});
+
+function openNewDialog(){
+  const st=activeStore();
+  document.getElementById('new-dialog-sub').textContent=st?`For: ${st.emoji} ${st.name}`:'';
+  document.getElementById('new-dialog').classList.remove('hidden');
+}
+document.getElementById('btn-new').addEventListener('click',openNewDialog);
+document.getElementById('btn-new-mobile').addEventListener('click',openNewDialog);
+['btn-close-new','btn-close-new2'].forEach(id=>document.getElementById(id).addEventListener('click',()=>document.getElementById('new-dialog').classList.add('hidden')));
+
+document.getElementById('btn-new-keep-aisles').addEventListener('click',()=>{
+  if(!confirm('Clear all items from current aisles?')) return;
+  const st=activeStore(); if(!st) return;
+  st.aisles.forEach(a=>{a.items=[];a.collapsed=false;});st.listName='My Grocery List';
+  persist();render();document.getElementById('new-dialog').classList.add('hidden');
+});
+document.getElementById('btn-new-blank').addEventListener('click',()=>{
+  if(!confirm('Reset this store to default aisles with no items?')) return;
+  const st=activeStore(); if(!st) return;
+  st.aisles=defaultAisles();st.listName='My Grocery List';
+  persist();render();document.getElementById('new-dialog').classList.add('hidden');
+});
+
+document.getElementById('btn-add-aisle').addEventListener('click',()=>{
+  const inp=document.getElementById('new-aisle-name'),name=inp.value.trim();
+  if(!name){inp.focus();return;}
+  const st=activeStore(); if(!st) return;
+  st.aisles.push({id:uid(),name,collapsed:false,items:[]});
+  inp.value='';persist();renderAisles();inp.focus();
+});
+document.getElementById('new-aisle-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-add-aisle').click();});
+
+document.getElementById('btn-close-rename').addEventListener('click',()=>{document.getElementById('rename-dialog').classList.add('hidden');S.renameAisleId=null;});
+document.getElementById('btn-cancel-rename').addEventListener('click',()=>{document.getElementById('rename-dialog').classList.add('hidden');S.renameAisleId=null;});
+document.getElementById('btn-do-rename').addEventListener('click',()=>{
+  const name=document.getElementById('rename-aisle-input').value.trim(); if(!name) return;
+  const st=activeStore(),a=st?.aisles.find(x=>x.id===S.renameAisleId);
+  if(a){a.name=name;persist();renderAisles();}
+  document.getElementById('rename-dialog').classList.add('hidden');S.renameAisleId=null;
+});
+document.getElementById('rename-aisle-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-do-rename').click();if(e.key==='Escape')document.getElementById('btn-cancel-rename').click();});
+
+document.getElementById('btn-close-store-dialog').addEventListener('click',()=>document.getElementById('store-dialog').classList.add('hidden'));
+document.getElementById('btn-cancel-store').addEventListener('click',()=>document.getElementById('store-dialog').classList.add('hidden'));
+document.getElementById('store-name-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-do-store').click();});
+document.getElementById('btn-do-store').addEventListener('click',()=>{
+  const name=document.getElementById('store-name-input').value.trim();
+  if(!name){document.getElementById('store-name-input').focus();return;}
+  if(S.storeDialogMode==='add'){
+    if(S.stores.length>=5){alert('Maximum 5 stores.');return;}
+    const ns=defaultStore(name,S.storeDialogEmoji,S.stores.length);
+    S.stores.push(ns);S.activeStoreId=ns.id;
+  } else {
+    const st=S.stores.find(s=>s.id===S.storeDialogId);
+    if(st){st.name=name;st.emoji=S.storeDialogEmoji;}
+  }
+  persist();document.getElementById('store-dialog').classList.add('hidden');render();
+});
+
+document.getElementById('btn-close-load-store').addEventListener('click',()=>{document.getElementById('load-store-dialog').classList.add('hidden');S.pendingHistLoad=null;});
+
+document.getElementById('list-name-input').addEventListener('input',e=>{
+  const st=activeStore(); if(st){st.listName=e.target.value;persist();}
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter') return;
+  const t=e.target;
+  if(t.dataset.action==='add-item-input'||t.dataset.action==='add-qty-input') addItem(t.dataset.aisleId);
+});
+
+function addItem(aisleId) {
+  const ni=document.getElementById('add-item-'+aisleId),qi=document.getElementById('add-qty-'+aisleId);
+  if(!ni) return;
+  const name=ni.value.trim(); if(!name){ni.focus();return;}
+  const st=activeStore(),a=st?.aisles.find(x=>x.id===aisleId); if(!a) return;
+  a.items.push({id:uid(),name,qty:qi?qi.value.trim():'',checked:false,onSale:false,isDeal:false});
+  a.collapsed=false;persist();renderAisles();renderStats();
+  const newni=document.getElementById('add-item-'+aisleId); if(newni) newni.focus();
+}
+
+document.getElementById('btn-clear-checked').addEventListener('click',()=>{
+  if(!confirm('Remove all checked items?')) return;
+  const st=activeStore(); if(!st) return;
+  st.aisles.forEach(a=>{a.items=a.items.filter(i=>!i.checked);});
+  persist();renderAisles();renderStats();
+});
+
+['history-modal','save-dialog','new-dialog','store-dialog','load-store-dialog'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target.id===id)document.getElementById(id).classList.add('hidden');});
+});
+
+// ── Export ──
+function exportBackup() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    stores: S.stores,
+    activeStoreId: S.activeStoreId,
+    savedLists: S.savedLists,
+    settings: S.settings,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'grocery-list-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Import ──
+function importBackup(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.stores || !Array.isArray(data.stores)) throw new Error('Invalid backup file.');
+      if (!confirm(`This will replace all your current data with the backup from ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString() : 'this file'}.\n\nContinue?`)) return;
+      S.stores = data.stores;
+      S.activeStoreId = data.activeStoreId || data.stores[0]?.id;
+      S.savedLists = data.savedLists || [];
+      if (data.settings) S.settings = {...S.settings, ...data.settings};
+      persist(); persistHist(); persistPrefs();
+      document.getElementById('backup-dialog').classList.add('hidden');
+      render();
+      alert('✅ Backup restored successfully!');
+    } catch(err) {
+      alert('❌ Could not read that file. Make sure it\'s a backup file from this app.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── Backup button ──
+document.getElementById('btn-backup').addEventListener('click', () => {
+  renderSettingsPanel();
+  document.getElementById('backup-dialog').classList.remove('hidden');
+});
+document.getElementById('btn-close-backup').addEventListener('click', () => document.getElementById('backup-dialog').classList.add('hidden'));
+document.getElementById('btn-export').addEventListener('click', exportBackup);
+document.getElementById('import-file-input').addEventListener('change', e => {
+  const file = e.target.files[0]; if (file) importBackup(file);
+  e.target.value = ''; // reset so same file can be picked again
+});
+document.getElementById('backup-dialog').addEventListener('click', e => { if(e.target.id==='backup-dialog') document.getElementById('backup-dialog').classList.add('hidden'); });
+
+// ── Deal label input ──
+document.getElementById('deal-label-input').addEventListener('input', e => {
+  S.settings.dealLabel = e.target.value;
+  persistPrefs();
+  renderDealCounter();
+});
+
+// ── Deal target +/- ──
+document.getElementById('deal-target-dec').addEventListener('click', () => {
+  if (S.settings.dealTarget > 2) {
+    S.settings.dealTarget--;
+    persistPrefs(); renderSettingsPanel(); renderDealCounter();
+  }
+});
+document.getElementById('deal-target-inc').addEventListener('click', () => {
+  if (S.settings.dealTarget < 20) {
+    S.settings.dealTarget++;
+    persistPrefs(); renderSettingsPanel(); renderDealCounter();
+  }
+});
+
+loadAll();
+render();
+</script>
+</body>
+</html>
